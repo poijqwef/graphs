@@ -1,0 +1,13 @@
+source venv/bin/activate
+if [ -n "$1" ]; then
+    if [ "$1" == "pip" ]; then
+        pip install -U setuptools
+        pip install -U pyscaffold
+        pip install -U wheel
+        pip install -U sphinx
+        pip install -U virtualenvwrapper
+        pip install -U apiclient
+        pip install -U discovery
+        pip install -U google-api-python-client
+    fi
+fi
