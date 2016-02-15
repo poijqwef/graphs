@@ -1,3 +1,5 @@
+api_keys.cfg
+
 # Temporary and binary files
 *~
 *.py[cod]
