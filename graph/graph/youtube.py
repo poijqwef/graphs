@@ -72,7 +72,9 @@ def printChannelGraph(rootUrl,depth,maxDepth,outputFile,titleDepth):
             minDepth = min(titleDepth[titleTo],minDepth)
         else:
             titleDepth[titleTo]=minDepth
-        outputFile.write('"'+title+ '" -> "'+titleTo+'";\n')
+        
+        label='From '+title[0:3]+' to '+titleTo[0:3]
+        outputFile.write('"'+title+ '" -> "'+titleTo+'" [label = "'+label+'"];\n')
         outputFile.write('"'+titleTo+ '" '+getColorFromDepth(minDepth,maxDepth)+'\n')
         printChannelGraph(url,depth,maxDepth,outputFile,titleDepth)
 
