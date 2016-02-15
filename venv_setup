@@ -9,5 +9,6 @@ if [ -n "$1" ]; then
         pip install -U apiclient
         pip install -U discovery
         pip install -U google-api-python-client
+        pip install -U matplotlib
     fi
 fi

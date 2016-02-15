@@ -2,6 +2,9 @@
 
 I will find feature channels for users given a depth and a starting point.
 
-ex: python setup.py install && graphFeaturedChannels -rootChannel stefbot
+ex: python setup.py install && graphFeaturedChannels -rootChannel <a user> -depth 3
 
-install "dot" (graphviz)
+You need to install "dot" (graphviz)
+
+![Sample](./graph/graph_output.png)
+

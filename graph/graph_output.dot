@@ -1,0 +1,34 @@
+digraph {
+"Stefan Molyneux" [style = filled, fillcolor = "red", shape = "square", fontcolor = white];
+"Stefan Molyneux" -> "Freedomain Radio";
+"Freedomain Radio" [style = filled, fillcolor = "#001acc", shape = "oval", fontcolor = white];
+"Freedomain Radio" [style = filled, fillcolor = "#001acc", shape = "oval", fontcolor = white];
+"Freedomain Radio" -> "Stefan Molyneux";
+"Stefan Molyneux" [style = filled, fillcolor = "red", shape = "square", fontcolor = white];
+"Stefan Molyneux" -> "Peter Schiff";
+"Peter Schiff" [style = filled, fillcolor = "#001acc", shape = "oval", fontcolor = white];
+"Peter Schiff" [style = filled, fillcolor = "#001acc", shape = "oval", fontcolor = white];
+"Peter Schiff" -> "SchiffGold - Peter Schiff's Gold Company";
+"SchiffGold - Peter Schiff's Gold Company" [style = filled, fillcolor = "#0000cc", shape = "oval", fontcolor = white];
+"Peter Schiff" -> "Stefan Molyneux";
+"Stefan Molyneux" [style = filled, fillcolor = "red", shape = "square", fontcolor = white];
+"Peter Schiff" -> "TomWoodsTV";
+"TomWoodsTV" [style = filled, fillcolor = "#0000cc", shape = "oval", fontcolor = white];
+"Peter Schiff" -> "London Real";
+"London Real" [style = filled, fillcolor = "#0000cc", shape = "oval", fontcolor = white];
+"Peter Schiff" -> "Mike Maloney";
+"Mike Maloney" [style = filled, fillcolor = "#0000cc", shape = "oval", fontcolor = white];
+"Stefan Molyneux" -> "Elliott Hulse";
+"Elliott Hulse" [style = filled, fillcolor = "#001acc", shape = "oval", fontcolor = white];
+"Elliott Hulse" [style = filled, fillcolor = "#001acc", shape = "oval", fontcolor = white];
+"Elliott Hulse" -> "Strength Camp";
+"Strength Camp" [style = filled, fillcolor = "#0000cc", shape = "oval", fontcolor = white];
+"Elliott Hulse" -> "Non Job Revolution";
+"Non Job Revolution" [style = filled, fillcolor = "#0000cc", shape = "oval", fontcolor = white];
+"Elliott Hulse" -> "Stefan Molyneux";
+"Stefan Molyneux" [style = filled, fillcolor = "red", shape = "square", fontcolor = white];
+"Elliott Hulse" -> "GoldJacketLuke";
+"GoldJacketLuke" [style = filled, fillcolor = "#0000cc", shape = "oval", fontcolor = white];
+"Elliott Hulse" -> "alpha m.";
+"alpha m." [style = filled, fillcolor = "#0000cc", shape = "oval", fontcolor = white];
+}

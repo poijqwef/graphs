@@ -16,6 +16,7 @@ import ConfigParser
 import re
 import subprocess
 import shlex
+import matplotlib
 
 [scriptDir,scriptName]=os.path.split(__file__)
 
@@ -42,21 +43,40 @@ __copyright__ = "poijqwef"
 __license__ = "none"
 
 _logger = logging.getLogger(__name__)
+youtube = build(YOUTUBE_API_SERVICE_NAME,YOUTUBE_API_VERSION,developerKey=DEVELOPER_KEY)
 
 
-def printChannelGraph(rootUrl,depth,maxDepth,outputFile):
+def getColorFromDepth(depth,maxDepth):
+    green=0.2*(maxDepth-depth)/float(maxDepth)
+    hexColor = 'red' if depth == 0 else matplotlib.colors.rgb2hex((0,green,0.8))
+    shape='square' if depth == 0 else 'oval'
+    return '[style = filled, fillcolor = "'+hexColor+'", shape = "'+shape+'", fontcolor = white];'
+
+def printChannelGraph(rootUrl,depth,maxDepth,outputFile,titleDepth):
     if depth >= maxDepth:
         return
+    urls,title = getFeaturedChannels(rootUrl)
+    minDepth=depth
+    if title in titleDepth.keys():
+        minDepth = min(titleDepth[title],minDepth)
+    else:
+        titleDepth[title]=minDepth
+    outputFile.write('"'+title+ '" '+getColorFromDepth(minDepth,maxDepth)+'\n')
 
     depth+=1
-    for i in getFeaturedChannels(rootUrl):
-        #print(rootUrl.replace('-','')+ ' -> '+i.replace('-','')+';')
-        outputFile.write('"'+rootUrl+ '" -> "'+i+'";\n')
-        printChannelGraph(i,depth,maxDepth,outputFile)
+    for url in urls:
+        titleTo = channelTitleFromUrl(url)
+        minDepth=depth
+
+        if titleTo in titleDepth.keys():
+            minDepth = min(titleDepth[titleTo],minDepth)
+        else:
+            titleDepth[titleTo]=minDepth
+        outputFile.write('"'+title+ '" -> "'+titleTo+'";\n')
+        outputFile.write('"'+titleTo+ '" '+getColorFromDepth(minDepth,maxDepth)+'\n')
+        printChannelGraph(url,depth,maxDepth,outputFile,titleDepth)
 
 def channelUrlFromUsername(username):
-    youtube = build(YOUTUBE_API_SERVICE_NAME,YOUTUBE_API_VERSION,
-    developerKey=DEVELOPER_KEY)
     userChannelIdRequest = youtube.channels().list(part="id",forUsername=username).execute()
     if len(userChannelIdRequest) == 0:
         return None
@@ -64,17 +84,27 @@ def channelUrlFromUsername(username):
         userChannelId = item['id']
     return userChannelId
 
+def channelTitleFromUrl(url):
+    userChannelIdRequest = youtube.channels().list(part="brandingSettings",id=url).execute()
+    if len(userChannelIdRequest) == 0:
+        return None
+    for item in userChannelIdRequest.get("items", []):
+        title = item['brandingSettings']['channel']['title']
+    return title
+
 def getFeaturedChannels(channelUrl):
-    youtube = build(YOUTUBE_API_SERVICE_NAME,YOUTUBE_API_VERSION,
-    developerKey=DEVELOPER_KEY)
     userChannelsRequest = youtube.channels().list(part="brandingSettings",id=channelUrl).execute()
     #print(json.dumps(userChannelsRequest, sort_keys=True,
     #    indent=4, separators=(',', ': ')))
     featuredChannels = []
+    title = None
     for search_result in userChannelsRequest.get("items", []):
         if 'featuredChannelsUrls' in search_result['brandingSettings']['channel'].keys():
             featuredChannels = search_result['brandingSettings']['channel']['featuredChannelsUrls']
-    return featuredChannels
+            title = search_result['brandingSettings']['channel']['title']
+    if not title:
+        return [],''
+    return featuredChannels,title
 
 def parse_args(args):
     parser = argparse.ArgumentParser(
@@ -84,7 +114,8 @@ def parse_args(args):
         '--version',
         action='version',
         version='graph {ver}'.format(ver=__version__))
-    parser.add_argument('-rootChannel')
+    parser.add_argument('-rootChannel',required=True)
+    parser.add_argument('-depth',default=2,required=False,type=int)
     parser.add_argument('-o',default='graph_output.dot')
     return parser.parse_args(args)
 
@@ -92,9 +123,10 @@ def main(args):
     args = parse_args(args)
     rootUrl = channelUrlFromUsername(args.rootChannel)
     outputFile=open(args.o,'w')
-    outputFile.write('digraph '+args.rootChannel+' {\n')
+    outputFile.write('digraph {\n')
+    titleDepth=dict()
     if rootUrl:
-        printChannelGraph(rootUrl,0,2,outputFile)
+        printChannelGraph(rootUrl,0,args.depth,outputFile,titleDepth)
     outputFile.write('}')
     outputFile.close()
     cmd='dot -Tpng -o graph_output.png graph_output.dot'
