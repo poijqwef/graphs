@@ -18,6 +18,7 @@ import subprocess
 import shlex
 import matplotlib
 import textwrap
+import numpy
 
 [scriptDir,scriptName]=os.path.split(__file__)
 
@@ -38,10 +39,52 @@ VIDEO_WATCH_URL = "https://www.youtube.com/watch?v="
 #outputDir=os.environ['HOME']+'/Downloads/Youtubes'
 
 from graph import __version__
+from graph import entities
 
 __author__ = "poijqwef"
 __copyright__ = "poijqwef"
 __license__ = "none"
+
+
+class iNode:
+    def __init__(self,channelId):
+        self.channelId = channelId
+        self.inwardEdges = []
+        self.outwardEdges = []
+        self.name = None
+        self.nInwardEdges = 0
+        self.nOutwardEdges = 0
+    def setName(self,name):
+        self.name = name
+    def addInwardEdge(self,edge):
+        self.inwardEdges.append(edge)
+        self.nInwardEdges+=1
+    def addOutwardEdge(self,edge):
+        self.outwardEdges.append(edge)
+        self.nOutwardEdges+=1
+    def info(self):
+        print('iNode info:')
+        print('ChannelId:',self.channelId)
+        print('Name:',self.name)
+        print('InwardEges:',self.nInwardEdges)
+        for i in self.inwardEdges:
+            i.print()
+        print('OutwardEdges:',self.nOutwardEdges)
+        for i in self.outwardEdges:
+            i.print()
+        print('~~~~~~~~~~')
+
+class iDirectedEdge:
+    def __init__(self,nodeFrom,nodeTo):
+        self.nodeFrom = nodeFrom
+        self.nodeTo = nodeTo
+    def print(self):
+        print(self.nodeFrom.name,'->',self.nodeTo.name)
+    def info(self):
+        print('iDirectedEdge info:')
+        print('NodeFrom:',self.nodeFrom.name)
+        print('NodeTo:',self.nodeTo.name)
+        print('~~~~~~~~~~')
 
 _logger = logging.getLogger(__name__)
 youtube = build(YOUTUBE_API_SERVICE_NAME,YOUTUBE_API_VERSION,developerKey=DEVELOPER_KEY)
@@ -54,11 +97,67 @@ nodeSeparation='2'
 
 myWrapper = textwrap.TextWrapper(width=20)
 
+def getYoutubeName(channelId):
+    userChannelIdRequest = youtube.channels().list(part="brandingSettings",id=channelId).execute()
+    if len(userChannelIdRequest) == 0:
+        return None
+    title = None
+    for item in userChannelIdRequest.get("items", []):
+        if 'title' in item['brandingSettings']['channel']:
+            title = item['brandingSettings']['channel']['title']
+        else:
+            return None
+    return title
+
+def getChannelConnections(channelId,connectingProperty):
+    userChannelsRequest = youtube.channels().list(part="brandingSettings",id=channelId).execute()
+    #print(json.dumps(userChannelsRequest, sort_keys=True,
+    #    indent=4, separators=(',', ': ')))
+    channelIds=[]
+    for search_result in userChannelsRequest.get("items",[]):
+        if connectingProperty in search_result['brandingSettings']['channel'].keys():
+            channelIds = search_result['brandingSettings']['channel'][connectingProperty]
+    return channelIds
+
+def crawlYoutube(node,depth,maxDepth,nodes,edges):
+    if depth > maxDepth:
+        return
+    channelIds = getChannelConnections(node.channelId,'featuredChannelsUrls')
+    for i in channelIds:
+        if i in nodes.keys():
+            myNode=nodes[i]
+        else:
+            myNode=iNode(i)
+            myNode.setName(getYoutubeName(i))
+            nodes[i]=myNode
+            crawlYoutube(myNode,depth+1,maxDepth,nodes,edges)
+
+        myEdge=iDirectedEdge(node,myNode)
+        node.addOutwardEdge(myEdge)
+        myNode.addInwardEdge(myEdge)
+        edges.append(myEdge)
+
+def getNodeStyle(node):
+    width=str(1.+numpy.log(1.+node.nInwardEdges))
+    hexColor='blue'
+    styleToken='[style=filled,fillcolor="'+hexColor+\
+               '",shape="'+childrenShape+\
+    '",fontcolor=white,fixedsize=true,width='+width+'];'
+    return styleToken
+
+def getEdgeStyle(edge):
+    title='\n'.join(myWrapper.wrap(edge.nodeFrom.name))
+    titleTo='\n'.join(myWrapper.wrap(edge.nodeTo.name))
+    label=title+' -> '+titleTo
+    styleToken='"'+title+'" -> "'+titleTo+'" [label="'+label+'"];'
+    return styleToken
+
 def getColorFromDepth(depth,maxDepth):
     green=0.2*(maxDepth-depth)/float(maxDepth)
     hexColor = 'red' if depth == 0 else 'blue' #matplotlib.colors.rgb2hex((0,green,0.8))
     shape=mainShape if depth == 0 else childrenShape
     return '[style = filled, fillcolor = "'+hexColor+'", shape = "'+shape+'", fontcolor = white, fixedsize=true, width='+shapeWidth+'];'
+
 
 def printChannelGraph(rootUrl,depth,maxDepth,outputFile,titleDepth):
     if depth >= maxDepth:
@@ -132,34 +231,55 @@ def parse_args(args):
         '--version',
         action='version',
         version='graph {ver}'.format(ver=__version__))
-    parser.add_argument('-rootChannel',required=False)
+    parser.add_argument('-rootChannelId',required=False)
     parser.add_argument('-rootUserid',required=False)
     parser.add_argument('-depth',default=2,required=False,type=int)
     parser.add_argument('-edgeNames',default=False,required=False)
     parser.add_argument('-o',default='graph_output.'+graphType)
     args = parser.parse_args(args)
-    if not args.rootChannel and not args.rootUserid:
+    if not args.rootChannelId and not args.rootUserid:
         print('error: Use either rootChannelor rootUserid')
         sys.exit(1)
     return args
 
 def main(args):
     args = parse_args(args)
-    print(args.rootChannel)
-    if not args.rootChannel:
-        rootUrl = channelUrlFromUsername(args.rootUserid)
+    print(args.rootChannelId)
+    if not args.rootChannelId:
+        rootChannelId = channelUrlFromUsername(args.rootUserid)
     else:
-        rootUrl = args.rootChannel
-    outputFile=open(args.o,'w')
-    outputFile.write('digraph {\n')
-    outputFile.write('K='+nodeSeparation+'\n')
+        rootChannelId = args.rootChannelId
+
     titleDepth=dict()
-    if rootUrl:
-        printChannelGraph(rootUrl,0,args.depth,outputFile,titleDepth)
-    outputFile.write('}')
-    outputFile.close()
-    cmd=graphType+' -T'+outputGraph+' -o graph_output.'+outputGraph+' graph_output.'+graphType
-    subprocess.check_call(shlex.split(cmd))
+
+    if rootChannelId:
+        myNode=iNode(rootChannelId)
+        myNode.setName(getYoutubeName(rootChannelId))
+        nodes={rootChannelId:myNode}
+        edges=[]
+        initialDepth=0
+        maxDepth=args.depth
+        crawlYoutube(myNode,initialDepth,maxDepth,nodes,edges)
+
+        outputFile=open(args.o,'w')
+        outputFile.write('digraph {\n')
+        outputFile.write('K='+nodeSeparation+'\n')
+        for i in nodes.values():
+            if i.name:
+                title='\n'.join(myWrapper.wrap(i.name))
+                outToken='"'+title+'" '+getNodeStyle(i)
+                outputFile.write(outToken.encode('utf-8')+'\n')
+        for i in edges:
+            if i.nodeFrom.name and i.nodeTo.name:
+                outToken=getEdgeStyle(i)
+                outputFile.write(outToken.encode('utf-8')+'\n')
+        outputFile.write('}\n')
+        outputFile.close()
+        cmd=graphType+' -T'+outputGraph+' -o graph_output.'+outputGraph+' graph_output.'+graphType
+        subprocess.check_call(shlex.split(cmd))
+
+        #printChannelGraph(rootUrl,0,args.depth,outputFile,titleDepth)
+
     _logger.info("Script ends here")
 
 def _graphFeaturedChannels():
