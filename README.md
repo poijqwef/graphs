@@ -10,7 +10,7 @@ You need a api_keys.cfg files with this in it:
     youtubeDataKey: YOUR_YOUTUBE_API_KEY
 
 Done:
-Find the most influential channels by counting how many times a node is pointed to.
+Find the most influential channels by counting how many times a node has inward edges.
 Used the logarithm of the inward channels to size nodes.
 
 You need to install graphviz and rsvg-view-3 if you want to visualize large svg files.

@@ -39,12 +39,10 @@ VIDEO_WATCH_URL = "https://www.youtube.com/watch?v="
 #outputDir=os.environ['HOME']+'/Downloads/Youtubes'
 
 from graph import __version__
-from graph import entities
 
 __author__ = "poijqwef"
 __copyright__ = "poijqwef"
 __license__ = "none"
-
 
 class iNode:
     def __init__(self,channelId):
@@ -90,9 +88,7 @@ _logger = logging.getLogger(__name__)
 youtube = build(YOUTUBE_API_SERVICE_NAME,YOUTUBE_API_VERSION,developerKey=DEVELOPER_KEY)
 graphType='fdp'
 outputGraph='svg'
-mainShape='square'
-childrenShape='circle'
-shapeWidth='2'
+mainShape='circle'
 nodeSeparation='2'
 
 myWrapper = textwrap.TextWrapper(width=20)
@@ -113,6 +109,7 @@ def getChannelConnections(channelId,connectingProperty):
     userChannelsRequest = youtube.channels().list(part="brandingSettings",id=channelId).execute()
     #print(json.dumps(userChannelsRequest, sort_keys=True,
     #    indent=4, separators=(',', ': ')))
+    #sys.exit(0)
     channelIds=[]
     for search_result in userChannelsRequest.get("items",[]):
         if connectingProperty in search_result['brandingSettings']['channel'].keys():
@@ -141,7 +138,7 @@ def getNodeStyle(node):
     width=str(1.+numpy.log(1.+node.nInwardEdges))
     hexColor='blue'
     styleToken='[style=filled,fillcolor="'+hexColor+\
-               '",shape="'+childrenShape+\
+               '",shape="'+mainShape+\
     '",fontcolor=white,fixedsize=true,width='+width+'];'
     return styleToken
 
@@ -152,43 +149,6 @@ def getEdgeStyle(edge):
     styleToken='"'+title+'" -> "'+titleTo+'" [label="'+label+'"];'
     return styleToken
 
-def getColorFromDepth(depth,maxDepth):
-    green=0.2*(maxDepth-depth)/float(maxDepth)
-    hexColor = 'red' if depth == 0 else 'blue' #matplotlib.colors.rgb2hex((0,green,0.8))
-    shape=mainShape if depth == 0 else childrenShape
-    return '[style = filled, fillcolor = "'+hexColor+'", shape = "'+shape+'", fontcolor = white, fixedsize=true, width='+shapeWidth+'];'
-
-
-def printChannelGraph(rootUrl,depth,maxDepth,outputFile,titleDepth):
-    if depth >= maxDepth:
-        return
-    urls,title = getFeaturedChannels(rootUrl)
-    minDepth=depth
-    if title in titleDepth.keys():
-        minDepth = min(titleDepth[title],minDepth)
-    else:
-        titleDepth[title]=minDepth
-    title = '\n'.join(myWrapper.wrap(title))
-    outToken='"'+title+ '" '+getColorFromDepth(minDepth,maxDepth)
-    outputFile.write(outToken.encode('utf-8')+'\n')
-
-    depth+=1
-    for url in urls:
-        titleTo = channelTitleFromUrl(url)
-        minDepth=depth
-        if title == None or titleTo == None:
-            continue
-        if titleTo in titleDepth.keys():
-            minDepth = min(titleDepth[titleTo],minDepth)
-        else:
-            titleDepth[titleTo]=minDepth
-        titleTo = '\n'.join(myWrapper.wrap(titleTo))
-        label=title+' -> '+titleTo
-        edge = '"'+title+ '" -> "'+titleTo+'" [label = "'+label+'" ];'
-        outputFile.write(edge.encode('utf-8')+'\n')
-        outputFile.write('"'+titleTo.encode('utf-8')+ '" '+getColorFromDepth(minDepth,maxDepth).encode('utf-8')+'\n')
-        printChannelGraph(url,depth,maxDepth,outputFile,titleDepth)
-
 def channelUrlFromUsername(username):
     userChannelIdRequest = youtube.channels().list(part="id",forUsername=username).execute()
     if len(userChannelIdRequest) == 0:
@@ -196,18 +156,6 @@ def channelUrlFromUsername(username):
     for item in userChannelIdRequest.get("items", []):
         userChannelId = item['id']
     return userChannelId
-
-def channelTitleFromUrl(url):
-    userChannelIdRequest = youtube.channels().list(part="brandingSettings",id=url).execute()
-    if len(userChannelIdRequest) == 0:
-        return None
-    title = None
-    for item in userChannelIdRequest.get("items", []):
-        if 'title' in item['brandingSettings']['channel']:
-            title = item['brandingSettings']['channel']['title']
-        else:
-            return None
-    return title
 
 def getFeaturedChannels(channelUrl):
     userChannelsRequest = youtube.channels().list(part="brandingSettings",id=channelUrl).execute()
@@ -277,8 +225,6 @@ def main(args):
         outputFile.close()
         cmd=graphType+' -T'+outputGraph+' -o graph_output.'+outputGraph+' graph_output.'+graphType
         subprocess.check_call(shlex.split(cmd))
-
-        #printChannelGraph(rootUrl,0,args.depth,outputFile,titleDepth)
 
     _logger.info("Script ends here")
 
